@@ -2,8 +2,8 @@
 -- (
 -- sit_site_id STRING
 -- ,vertical STRING
--- ,cus_cust_id_buy NUMERIC
--- ,ite_item_id NUMERIC
+-- ,cus_cust_id_buy STRING
+-- ,ite_item_id STRING
 -- ,bank STRING
 -- ,page_vertical STRING
 -- ,category_domain STRING
@@ -20,7 +20,7 @@
 -- )
 -- ;
 
-INSERT  `meli-bi-data.SBOX_MKTVIS.MOT_MLM_FINANCIAMIENTO_CREDITAS_BBVA`
+-- INSERT  `meli-bi-data.SBOX_MKTVIS.MOT_MLM_FINANCIAMIENTO_CREDITAS_BBVA`
 
 -- Se partió usando de esqueleto: https://console.cloud.google.com/bigquery?sq=349719048189:e6ebefb1ced24de6a946f38da5f2b012&project=calm-mariner-105612 y en base a https://docs.google.com/presentation/d/1JkJjo4m58_wgfoIUjtEEGQm9PBlV-qfRkkbN1G-tbWg/edit#slide=id.gcbe6c4a7d1_0_167
 
@@ -38,8 +38,8 @@ WITH ga_sessions AS (
     FROM
     `calm-mariner-105612.79571586.ga_sessions_*`
     WHERE ((( TIMESTAMP(PARSE_DATE('%Y%m%d', REGEXP_EXTRACT(_TABLE_SUFFIX,r'^\d\d\d\d\d\d\d\d'))) ) >= 
-    (TIMESTAMP('2022-08-20 00:00:00')) AND ( TIMESTAMP(PARSE_DATE('%Y%m%d', REGEXP_EXTRACT(_TABLE_SUFFIX,r'^\d\d\d\d\d\d\d\d'))) )
-    <= (TIMESTAMP('2022-08-30 00:00:00'))))
+    (TIMESTAMP('2021-01-01 00:00:00')) AND ( TIMESTAMP(PARSE_DATE('%Y%m%d', REGEXP_EXTRACT(_TABLE_SUFFIX,r'^\d\d\d\d\d\d\d\d'))) )
+    <= (TIMESTAMP('2021-06-30 00:00:00'))))
 
 )
 -- Subquery 2: filtro para tener los eventos y creo las columnas que necesito para agrupar
@@ -92,8 +92,8 @@ WITH ga_sessions AS (
 SELECT 
       sit_site_id 
     , vertical 
-    , cast(cus_cust_id_buy as NUMERIC) as cus_cust_id_buy
-    , cast(ite_item_id as NUMERIC) as ite_item_id
+    , cus_cust_id_buy
+    , ite_item_id
     , bank 
     , page_vertical 
     , category_domain 
