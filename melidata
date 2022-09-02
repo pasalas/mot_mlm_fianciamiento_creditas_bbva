@@ -1,0 +1,28 @@
+/*
+documentación para poder hacer la query: https://docs.google.com/presentation/d/1JkJjo4m58_wgfoIUjtEEGQm9PBlV-qfRkkbN1G-tbWg/edit#slide=id.gcbe6c4a7d1_0_167
+*/
+
+  SELECT 
+  id
+, ds
+, usr.user_id	
+, usr.uid	
+, JSON_EXTRACT(event_data, '$.business') business
+, JSON_EXTRACT(event_data, '$.bank') bank
+, JSON_EXTRACT(event_data, '$.vertical') vertical
+, JSON_EXTRACT(event_data, '$.item_seller_type') item_seller_type
+, JSON_EXTRACT(event_data, '$.item_id') item_id
+, JSON_EXTRACT(event_data, '$.item_condition') item_condition
+, JSON_EXTRACT(event_data, '$.item_attributes') item_attributes
+, JSON_EXTRACT(event_data, '$.city') city
+, JSON_EXTRACT(event_data, '$.category_id') category_id
+, JSON_EXTRACT(event_data, '$.seller_id') seller_id
+
+  FROM `meli-bi-data.MELIDATA.TRACKS`
+  WHERE path IN ('/vip/credits_intention/main_action/down', '/vip/credits_intention/card')
+  AND bu = 'mercadolibre'
+  AND JSON_EXTRACT(event_data, '$.bank') IN ('"BBVA"','"Financiera Creditas"')
+  AND JSON_EXTRACT(event_data, '$.vertical') = '"motors"'
+  AND ds >= '2021-06-01'
+  AND type = 'event'
+  AND site in ('MLM') 
