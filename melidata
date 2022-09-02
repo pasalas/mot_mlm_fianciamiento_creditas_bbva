@@ -1,6 +1,26 @@
-/*
-documentación para poder hacer la query: https://docs.google.com/presentation/d/1JkJjo4m58_wgfoIUjtEEGQm9PBlV-qfRkkbN1G-tbWg/edit#slide=id.gcbe6c4a7d1_0_167
-*/
+CREATE TABLE `meli-bi-data.SBOX_MKTVIS.melidata_mot_mlm_fianciamiento_creditas_bbva`
+-- (
+--   id string
+-- , ds date
+-- , user_id	 string
+-- , uid	 string
+-- , business string
+-- , bank string
+-- , vertical string
+-- , item_seller_type string
+-- , item_id string
+-- , item_condition string
+-- , item_attributes string
+-- , city string
+-- , category_id string
+-- , seller_id string
+-- )
+-- PARTITION BY ds
+-- CLUSTER BY bank
+-- OPTIONS(
+--   description="fuente: melidata. analisis ad-hoc: saber # de intencion de financiamiento de creditas y BBVA. Repositorio: https://github.com/pasalas/mot_mlm_fianciamiento_creditas_bbva/blob/main/melidata"
+-- )
+-- ;
 
   SELECT 
   id
