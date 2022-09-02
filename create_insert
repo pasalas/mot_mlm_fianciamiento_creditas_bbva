@@ -1,0 +1,123 @@
+-- CREATE TABLE `meli-bi-data.SBOX_MKTVIS.MOT_MLM_FINANCIAMIENTO_CREDITAS_BBVA`
+-- (
+-- sit_site_id STRING
+-- ,vertical STRING
+-- ,cus_cust_id_buy NUMERIC
+-- ,ite_item_id NUMERIC
+-- ,bank STRING
+-- ,page_vertical STRING
+-- ,category_domain STRING
+-- ,item_attribute STRING
+-- ,region_ga STRING
+-- ,tipo_contacto STRING
+-- ,ds_date DATE
+-- ,clientId STRING
+-- )
+-- PARTITION BY ds_date
+-- CLUSTER BY bank
+-- OPTIONS(
+--   description="analisis ad-hoc: saber # de intencion de financiamiento de creditas y BBVA. Repositorio: https://github.com/pasalas/mot_mlm_fianciamiento_creditas_bbva/"
+-- )
+-- ;
+
+INSERT  `meli-bi-data.SBOX_MKTVIS.MOT_MLM_FINANCIAMIENTO_CREDITAS_BBVA`
+
+-- Se partió usando de esqueleto: https://console.cloud.google.com/bigquery?sq=349719048189:e6ebefb1ced24de6a946f38da5f2b012&project=calm-mariner-105612 y en base a https://docs.google.com/presentation/d/1JkJjo4m58_wgfoIUjtEEGQm9PBlV-qfRkkbN1G-tbWg/edit#slide=id.gcbe6c4a7d1_0_167
+
+
+
+-- Subquery 1: union all de las tablas de los distintos sites, filtrando fecha
+
+WITH ga_sessions AS (
+
+    
+    --MLM
+    SELECT *
+    , 79571586 AS dataset_id
+    , GENERATE_UUID() as id, _TABLE_SUFFIX as partition_date_string
+    FROM
+    `calm-mariner-105612.79571586.ga_sessions_*`
+    WHERE ((( TIMESTAMP(PARSE_DATE('%Y%m%d', REGEXP_EXTRACT(_TABLE_SUFFIX,r'^\d\d\d\d\d\d\d\d'))) ) >= 
+    (TIMESTAMP('2022-08-20 00:00:00')) AND ( TIMESTAMP(PARSE_DATE('%Y%m%d', REGEXP_EXTRACT(_TABLE_SUFFIX,r'^\d\d\d\d\d\d\d\d'))) )
+    <= (TIMESTAMP('2022-08-30 00:00:00'))))
+
+)
+-- Subquery 2: filtro para tener los eventos y creo las columnas que necesito para agrupar
+
+, EVENTOS AS 
+ (
+    SELECT
+        (CASE WHEN (ga_sessions.dataset_id = 79568999) THEN 'MLA' 
+                WHEN (ga_sessions.dataset_id = 79572943) THEN 'MLB'
+                WHEN (ga_sessions.dataset_id = 79569884) THEN 'MLU'
+                WHEN (ga_sessions.dataset_id = 171108187 or ga_sessions.dataset_id = 79575411) THEN 'MLC'
+                WHEN (ga_sessions.dataset_id = 79576008 or ga_sessions.dataset_id = 79576307) THEN 'MCO'
+                WHEN (ga_sessions.dataset_id = 79571586 or ga_sessions.dataset_id = 108964616) THEN 'MLM'       
+                END) AS sit_site_id
+        , (CASE WHEN ( SELECT value FROM hits.customDimensions WHERE index=8 ) in ('MOTORS','MOT') THEN 'IMM'
+                WHEN ( SELECT value FROM hits.customDimensions WHERE index=8 ) in ('REAL_ESTATE')  THEN 'IMRE'
+                WHEN ( SELECT value FROM hits.customDimensions WHERE index=8 ) in ('SERVICES')     THEN 'IMS'
+                END) AS vertical
+
+        -- , (SELECT (CASE WHEN value IN ('NOT_LOGGED_IN','') OR value IS NULL THEN 'NOT_LOGGED_IN' ELSE 'LOGGED_IN' END) FROM hits.customDimensions WHERE index= 103) AS IS_LOGGED
+        , (SELECT (CASE WHEN value IN ('NOT_LOGGED_IN','') OR value IS NULL THEN clientId ELSE value END) FROM hits.customDimensions WHERE index= 103) AS cus_cust_id_buy
+        , (SELECT value FROM hits.customDimensions WHERE index= 49) AS ite_item_id
+
+        , (SELECT value FROM hits.customDimensions WHERE index= 40) AS bank
+        , (SELECT value FROM hits.customDimensions WHERE index= 8) AS page_vertical
+        -- , (SELECT value FROM hits.customDimensions WHERE index= 79) AS congrats_status
+        , (SELECT value FROM hits.customDimensions WHERE index= 86) AS category_domain
+        , (SELECT value FROM hits.customDimensions WHERE index= 111) AS item_attribute
+
+
+
+        , geoNetwork.region
+        , upper(hits.eventInfo.eventAction) as Tipo_Contacto
+        , CAST(CAST(PARSE_DATE('%Y%m%d',  ga_sessions.date) AS TIMESTAMP) AS DATE) AS ds_date
+        , clientId
+
+    FROM ga_sessions
+    , UNNEST(ga_sessions.hits) as hits
+    --, UNNEST(ga_sessions.customDimensions) as customDimensions
+    
+    WHERE (((SELECT value FROM hits.customDimensions WHERE index=8) in ('MOTORS','MOT'))
+        AND UPPER(hits.eventInfo.eventAction) IN ('CREDITS_INTENTION')
+          )
+    AND (SELECT value FROM hits.customDimensions WHERE index= 40) IN ('Financiera Creditas','BBVA')
+    AND (SELECT value FROM hits.customDimensions WHERE index= 86) = 'MLM-CARS_AND_VANS'
+)
+
+-- Select principal: selecciono las columnas que necesito y creo las metricas segun el nivel de segregación
+
+SELECT 
+      sit_site_id 
+    , vertical 
+    , cast(cus_cust_id_buy as NUMERIC) as cus_cust_id_buy
+    , cast(ite_item_id as NUMERIC) as ite_item_id
+    , bank 
+    , page_vertical 
+    , category_domain 
+    , item_attribute 
+    , region as region_ga
+    , tipo_contacto 
+    , ds_date 
+    , clientId 
+
+FROM EVENTOS AS A
+
+-- LEFT JOIN
+-- (
+--   SELECT
+--       SIT_SITE_ID
+--     , ITE_ITEM_ID
+--     , ITE_ITEM_STATE
+--     , ITE_ITEM_DOM_DOMAIN_ID
+--     , (CASE WHEN REGEXP_CONTAINS((SELECT MAX(ITE_ITEM_SALES_TERMS.VALUE_NAME) FROM UNNEST(A.ITE_ITEM_SALES_TERMS) AS ITE_ITEM_SALES_TERMS WHERE ITE_ITEM_SALES_TERMS.ID = 'IS_FINANCEABLE'), '^S') IS TRUE OR REGEXP_CONTAINS((SELECT MAX(ITE_ITEM_SALES_TERMS.VALUE_NAME) FROM UNNEST(A.ITE_ITEM_SALES_TERMS) AS ITE_ITEM_SALES_TERMS WHERE ITE_ITEM_SALES_TERMS.ID = 'IS_FINANCEABLE'), '^Y') IS TRUE THEN TRUE ELSE FALSE END) AS IS_FINANCEABLE
+
+--   FROM `meli-bi-data.WHOWNER.LK_ITE_ITEMS` AS A
+--   WHERE SIT_SITE_ID = 'MLB'
+-- ) AS B
+-- ON CONCAT(B.SIT_SITE_ID,B.ITE_ITEM_ID) = A.ITE_ITEM_ID
+;
+
+
